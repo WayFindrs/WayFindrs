@@ -200,25 +200,17 @@ class GpsPoller(threading.Thread):
                 break
 
 
-def stop_bluetoothd():
-    """Stop bluetoothd so bluepy can access the HCI management socket directly."""
-    import glob
-    import signal as _signal
-    killed = False
-    for comm_file in glob.glob("/proc/[0-9]*/comm"):
-        try:
-            with open(comm_file) as f:
-                if f.read().strip() == "bluetoothd":
-                    pid = int(comm_file.split("/")[2])
-                    os.kill(pid, _signal.SIGTERM)
-                    killed = True
-                    print(f"bluetoothd (PID {pid}) stopped.")
-        except Exception:
-            pass
-    if killed:
-        time.sleep(1)
-    else:
-        print("bluetoothd not running — proceeding.")
+def ensure_hci_up(iface_idx):
+    """Bring the HCI device up if it is currently down."""
+    iface = f"hci{iface_idx}"
+    try:
+        result = subprocess.run(["hciconfig", iface, "up"], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            print(f"{iface} is up.")
+        else:
+            print(f"Warning: could not bring {iface} up: {result.stderr.strip()}")
+    except Exception as e:
+        print(f"Warning: hciconfig {iface} up failed: {e}")
 
 
 def _kill_stale_gpsd():
@@ -300,7 +292,8 @@ def main():
     if not args.gps_device:
         parser.error("--gps-device is required. GPS coordinates are mandatory for all scans.")
 
-    stop_bluetoothd()
+    iface_idx = int(args.iface.lstrip("hci")) if args.iface.startswith("hci") else int(args.iface)
+    ensure_hci_up(iface_idx)
 
     if not setup_gps(args.gps_device):
         sys.exit(1)
@@ -336,7 +329,6 @@ def main():
 
     try:
         while True:
-            iface_idx = int(args.iface.lstrip("hci")) if args.iface.startswith("hci") else int(args.iface)
             scan_and_upload(args.api_url, token, duration=args.duration, local_mode=local_mode, iface=iface_idx, output_dir=args.output_dir)
             time.sleep(1)
     except TokenExpiredError as e:
