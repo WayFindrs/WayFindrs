@@ -478,9 +478,17 @@ def upload_scan(filename):
     except Exception as e:
         return jsonify({"status": "error", "message": f"Failed to read file: {e}"}), 500
 
+    # Ensure a session is active — the API rejects bulk uploads without one
+    if not _session_start(cfg):
+        return jsonify({
+            "status": "error",
+            "message": "Cannot start a session — check API connectivity and token.",
+        }), 503
+
     api_url = cfg["api_url"]
     CHUNK = 50
     accepted = rejected = skipped = batches = 0
+    session_lost = False
 
     for i in range(0, len(records), CHUNK):
         batch = records[i:i + CHUNK]
@@ -491,6 +499,13 @@ def upload_scan(filename):
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=30,
             )
+            if resp.status_code == 403:
+                # Session ended between batches (token expired or API closed it)
+                with _session["lock"]:
+                    _session["active"] = False
+                skipped += len(records) - i
+                session_lost = True
+                break
             if resp.ok:
                 r = resp.json()
                 accepted += r.get("accepted", 0)
@@ -501,14 +516,20 @@ def upload_scan(filename):
             skipped += len(batch)
         batches += 1
 
-    return jsonify({
+    # End session if we opened it and no scanners are still running
+    _session_end_if_idle(cfg)
+
+    result = {
         "status": "ok",
         "total": len(records),
         "accepted": accepted,
         "rejected": rejected,
         "skipped": skipped,
         "batches": batches,
-    })
+    }
+    if session_lost:
+        result["warning"] = "Session expired mid-upload — re-authenticate and retry."
+    return jsonify(result)
 
 
 @app.route("/api/scans/<filename>", methods=["DELETE"])
