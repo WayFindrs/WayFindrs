@@ -1,0 +1,12 @@
+# Web manager
+flask>=3.0.0
+requests>=2.31.0
+
+# BLE scanner — requires bluez system packages (see Dockerfile)
+bluepy>=1.3.0
+
+# WiFi scanner
+scapy>=2.5.0
+
+# GPS — official gpsd Python bindings (PyPI)
+gps>=3.0

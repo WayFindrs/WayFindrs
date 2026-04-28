@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WayFindrs Sensor Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sage:      #3E5248;
+      --sage-deep: #2E3E36;
+      --sage-soft: #566E60;
+      --sage-tint: #DDE4DF;
+      --cream:     #F2EADF;
+      --bone:      #E8DECF;
+      --offwhite:  #FAF7F2;
+      --ink:       #0F1511;
+      --ink-soft:  #1A2420;
+      --amber:     #C48B3C;
+      --coral:     #C1440E;
+      --shadow-1:  0 1px 2px rgba(15,21,17,.06), 0 2px 6px rgba(15,21,17,.05);
+    }
+
+    body {
+      background: var(--offwhite);
+      color: var(--ink);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    nav {
+      width: 220px;
+      min-width: 220px;
+      background: var(--sage);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 0 16px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      flex-shrink: 0;
+      box-shadow: 2px 0 8px rgba(15,21,17,.12);
+    }
+
+    .nav-brand {
+      padding: 0 20px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(242,234,223,0.12);
+      margin-bottom: 12px;
+    }
+
+    .nav-brand .wordmark {
+      color: var(--cream);
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.3px;
+    }
+
+    .nav-brand .sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: rgba(242,234,223,0.5);
+      margin-top: 1px;
+    }
+
+    .nav-links { padding: 0 10px; flex: 1; }
+
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      margin-bottom: 2px;
+      color: rgba(242,234,223,0.65);
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      transition: color 160ms, background 160ms;
+    }
+
+    nav a:hover { color: var(--cream); background: rgba(242,234,223,0.08); }
+    nav a.active { color: var(--cream); background: rgba(242,234,223,0.13); font-weight: 600; }
+
+    main {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+      min-width: 0;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--ink);
+    }
+
+    .card {
+      background: var(--cream);
+      border: 1px solid var(--bone);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-1);
+    }
+
+    .card h3 {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--sage-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--sage-soft);
+      margin-bottom: 5px;
+    }
+
+    input[type=text], input[type=password], input[type=email], input[type=number], input[type=url] {
+      width: 100%;
+      background: var(--offwhite);
+      border: 1px solid var(--bone);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: var(--ink);
+      font-size: 14px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      outline: none;
+      transition: border-color 160ms;
+    }
+
+    input:focus { border-color: var(--sage); }
+
+    select {
+      width: 100%;
+      background: var(--offwhite);
+      border: 1px solid var(--bone);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: var(--ink);
+      font-size: 14px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 160ms;
+    }
+
+    select:focus { border-color: var(--sage); }
+    select option { background: var(--cream); }
+
+    .form-row { margin-bottom: 14px; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    button {
+      background: var(--sage);
+      color: var(--cream);
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 160ms;
+    }
+
+    button:hover { background: var(--sage-deep); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.danger { background: var(--coral); color: #fff; }
+    button.danger:hover { background: #a3370b; }
+    button.secondary { background: var(--bone); color: var(--ink); }
+    button.secondary:hover { background: #d5cab8; }
+    button.success { background: var(--amber); color: #fff; }
+    button.success:hover { background: #a87330; }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-weight: 500;
+    }
+
+    .badge-green  { background: rgba(196,139,60,0.13); color: var(--amber); }
+    .badge-red    { background: rgba(193,68,14,0.10);  color: var(--coral); }
+    .badge-yellow { background: rgba(196,139,60,0.13); color: var(--amber); }
+    .badge-gray   { background: rgba(86,110,96,0.12);  color: var(--sage-soft); }
+
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+    .scanner-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .scanner-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--sage);
+    }
+
+    .log {
+      background: var(--ink);
+      border: 1px solid var(--ink-soft);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--sage-tint);
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 12px;
+    }
+
+    .log .log-line { line-height: 1.6; }
+    .log .log-line.err  { color: #E08060; }
+    .log .log-line.ok   { color: var(--amber); }
+    .log .log-line.info { color: rgba(221,228,223,0.5); }
+
+    .alert {
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+
+    .alert-ok  { background: rgba(62,82,72,0.08);  border: 1px solid rgba(62,82,72,0.2);  color: var(--sage); }
+    .alert-err { background: rgba(193,68,14,0.07); border: 1px solid rgba(193,68,14,0.2); color: var(--coral); }
+
+    .token-display {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--sage-soft);
+      background: var(--offwhite);
+      border: 1px solid var(--bone);
+      border-radius: 6px;
+      padding: 10px 12px;
+      word-break: break-all;
+      margin-top: 10px;
+    }
+
+    .divider { border: none; border-top: 1px solid var(--bone); margin: 18px 0; }
+
+    .stat-tile {
+      background: var(--offwhite);
+      border: 1px solid var(--bone);
+      border-radius: 10px;
+      padding: 20px 16px;
+      text-align: center;
+    }
+
+    .stat-tile .stat-value {
+      font-size: 1.9rem;
+      font-weight: 600;
+      color: var(--sage);
+      line-height: 1.1;
+    }
+
+    .stat-tile .stat-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--sage-soft);
+      margin-top: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--bone); border-radius: 3px; }
+
+    /* ── Theme toggle button (always on sage bg) ──────────────────────── */
+    .nav-footer {
+      padding: 0 10px;
+      margin-top: auto;
+      border-top: 1px solid rgba(242,234,223,0.12);
+      padding-top: 10px;
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      background: transparent !important;
+      color: rgba(242,234,223,0.55) !important;
+      font-size: 13px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      transition: color 160ms, background 160ms !important;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(242,234,223,0.08) !important;
+      color: var(--cream) !important;
+    }
+
+    /* ── Dark mode overrides (scoped to main to leave sage nav untouched) */
+    html[data-theme="dark"] body        { background: var(--ink); color: var(--cream); }
+    html[data-theme="dark"] h2          { color: var(--cream); }
+    html[data-theme="dark"] label       { color: var(--sage-tint); }
+
+    html[data-theme="dark"] .card {
+      background: var(--ink-soft);
+      border-color: rgba(242,234,223,0.1);
+    }
+    html[data-theme="dark"] .card h3    { color: var(--sage-tint); }
+
+    html[data-theme="dark"] input[type=text],
+    html[data-theme="dark"] input[type=password],
+    html[data-theme="dark"] input[type=email],
+    html[data-theme="dark"] input[type=number],
+    html[data-theme="dark"] input[type=url],
+    html[data-theme="dark"] select {
+      background: var(--ink);
+      border-color: rgba(242,234,223,0.12);
+      color: var(--cream);
+    }
+    html[data-theme="dark"] select option { background: var(--ink-soft); }
+
+    html[data-theme="dark"] main button           { background: var(--cream); color: var(--ink); }
+    html[data-theme="dark"] main button:hover     { background: var(--bone); }
+    html[data-theme="dark"] main button.danger    { background: var(--coral); color: #fff; }
+    html[data-theme="dark"] main button.danger:hover { background: #a3370b; }
+    html[data-theme="dark"] main button.secondary { background: rgba(242,234,223,0.08); color: var(--cream); }
+    html[data-theme="dark"] main button.secondary:hover { background: rgba(242,234,223,0.14); }
+    html[data-theme="dark"] main button.success   { background: var(--amber); color: #fff; }
+    html[data-theme="dark"] main button.success:hover { background: #a87330; }
+
+    html[data-theme="dark"] .divider    { border-top-color: rgba(242,234,223,0.1); }
+
+    html[data-theme="dark"] .stat-tile  { background: var(--ink-soft); border-color: rgba(242,234,223,0.1); }
+    html[data-theme="dark"] .stat-tile .stat-value { color: var(--cream); }
+
+    html[data-theme="dark"] .scanner-title { color: var(--sage-tint); }
+
+    html[data-theme="dark"] .token-display {
+      background: var(--ink-soft);
+      border-color: rgba(242,234,223,0.1);
+      color: var(--sage-tint);
+    }
+
+    html[data-theme="dark"] .alert-ok  {
+      background: rgba(62,82,72,0.2);
+      border-color: rgba(62,82,72,0.4);
+      color: var(--sage-tint);
+    }
+    html[data-theme="dark"] .alert-err {
+      background: rgba(193,68,14,0.15);
+      border-color: rgba(193,68,14,0.3);
+    }
+
+    html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(242,234,223,0.15); }
+
+    .scanner-summary {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--sage-soft);
+      background: var(--offwhite);
+      border: 1px solid var(--bone);
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+      line-height: 1.7;
+    }
+    .summary-warn { color: var(--coral); }
+    html[data-theme="dark"] .scanner-summary { background: var(--ink); border-color: rgba(242,234,223,0.1); color: var(--sage-tint); }
+
+    .scans-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .scans-table th {
+      text-align: left;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--sage-soft);
+      padding: 0 8px 10px 0;
+      border-bottom: 1px solid var(--bone);
+    }
+    .scans-table td { padding: 10px 8px 10px 0; border-bottom: 1px solid rgba(62,82,72,0.08); vertical-align: middle; }
+    .scans-table tr:last-child td { border-bottom: none; }
+    .scan-fname { font-family: 'DM Mono', monospace; word-break: break-all; font-size: 12px; }
+    .scan-status { font-family: 'DM Mono', monospace; font-size: 11px; }
+
+    html[data-theme="dark"] .scans-table th { color: var(--sage-tint); border-bottom-color: rgba(242,234,223,0.1); }
+    html[data-theme="dark"] .scans-table td { border-bottom-color: rgba(242,234,223,0.06); }
+
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+      nav { display: none; }
+    }
+    @media (max-width: 720px) {
+      #scanners .scanner-grid { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-brand">
+    <svg viewBox="0 0 200 200" width="28" height="28" aria-hidden="true">
+      <path d="M 44 86 A 56 56 0 1 1 156 86 C 156 118.48, 114 148, 100 172 C 86 148, 44 118.48, 44 86 Z M 100 61.2 L 104.4 87.6 L 135.2 92 L 104.4 96.4 L 100 122.8 L 95.6 96.4 L 64.8 92 L 95.6 87.6 Z" fill-rule="evenodd" fill="#F2EADF"/>
+    </svg>
+    <div>
+      <div class="wordmark">WayFindrs</div>
+      <div class="sub">Sensor Manager</div>
+    </div>
+  </div>
+  <div class="nav-links">
+    <a class="active" data-section="auth" onclick="show('auth', this)">Auth</a>
+    <a data-section="scanners" onclick="show('scanners', this)">Scanners</a>
+    <a data-section="stats" onclick="show('stats', this)">Stats</a>
+    <a data-section="scans" onclick="show('scans', this)">Local Scans</a>
+    <a data-section="config" onclick="show('config', this)">Config</a>
+  </div>
+  <div class="nav-footer">
+    <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()">☀ Light mode</button>
+  </div>
+</nav>
+
+  <main>
+    <div id="flash" style="display:none"></div>
+
+    <!-- AUTH -->
+    <div id="auth" class="section active" style="max-width:680px">
+      <h2>Authentication</h2>
+
+      <div class="card" id="token-status-card">
+        <h3>Token Status</h3>
+        <div id="token-status"><span class="status-badge badge-gray"><span class="dot"></span>Loading…</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Network / API Connectivity</h3>
+        <div id="connectivity-status"><span class="status-badge badge-gray"><span class="dot"></span>Checking…</span></div>
+        <div id="connectivity-note" style="font-size:12px;margin-top:8px;color:var(--sage-soft);line-height:1.5"></div>
+      </div>
+
+      <div class="card">
+        <h3>Login to Obtain Token</h3>
+        <div class="form-row">
+          <label>API URL</label>
+          <input type="url" id="login-api-url" placeholder="https://wayfindrs.com" />
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Email</label>
+            <input type="email" id="login-email" placeholder="you@example.com" />
+          </div>
+          <div class="form-row">
+            <label>Password</label>
+            <input type="password" id="login-password" placeholder="••••••••" />
+          </div>
+        </div>
+        <div class="btn-row">
+          <button onclick="fetchToken()">Get Token</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Paste Token Directly</h3>
+        <div class="form-row">
+          <label>Bearer Token</label>
+          <input type="text" id="paste-token" placeholder="eyJhbGci…" />
+        </div>
+        <div class="btn-row">
+          <button onclick="saveToken()">Save Token</button>
+          <button class="danger" onclick="clearToken()">Clear Token</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCANNERS -->
+    <div id="scanners" class="section">
+      <h2>Scanners</h2>
+
+      <!-- combined controls -->
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div style="display:flex;gap:12px;align-items:center">
+            <span id="ble-badge"  class="status-badge badge-gray"><span class="dot"></span>BLE: Unknown</span>
+            <span id="wifi-badge" class="status-badge badge-gray"><span class="dot"></span>WiFi: Unknown</span>
+          </div>
+          <div class="btn-row" style="margin:0">
+            <button id="both-start-btn" class="success" onclick="startBoth()">&#9654; Start All</button>
+            <button id="both-stop-btn" class="danger" onclick="stopBoth()" style="display:none">&#9632; Stop All</button>
+            <button class="secondary" onclick="refreshStatus('ble');refreshStatus('wifi')">&#8635; Refresh</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- two scanner cards side by side -->
+      <div class="scanner-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <div class="card">
+          <div class="scanner-header">
+            <span class="scanner-title">BLE</span>
+          </div>
+          <div id="ble-summary" class="scanner-summary">Loading…</div>
+          <div class="btn-row">
+            <button id="ble-start-btn" class="success" onclick="startScanner('ble')">&#9654; Start</button>
+            <button id="ble-stop-btn" class="danger" onclick="stopScanner('ble')" style="display:none">&#9632; Stop</button>
+          </div>
+          <div class="log" id="ble-log"><span style="color:var(--sage-soft);font-size:12px">— no output —</span></div>
+        </div>
+
+        <div class="card">
+          <div class="scanner-header">
+            <span class="scanner-title">WiFi</span>
+          </div>
+          <div id="wifi-summary" class="scanner-summary">Loading…</div>
+          <div class="btn-row">
+            <button id="wifi-start-btn" class="success" onclick="startScanner('wifi')">&#9654; Start</button>
+            <button id="wifi-stop-btn" class="danger" onclick="stopScanner('wifi')" style="display:none">&#9632; Stop</button>
+          </div>
+          <div class="log" id="wifi-log"><span style="color:var(--sage-soft);font-size:12px">— no output —</span></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div id="stats" class="section" style="max-width:680px">
+      <h2>My Stats</h2>
+      <div class="card" id="stats-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div id="stats-email" style="font-size:0.85rem;color:var(--muted)">—</div>
+          <button class="secondary" onclick="loadStats()" style="padding:5px 12px;font-size:0.8rem">&#8635; Refresh</button>
+        </div>
+        <div id="stats-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+          <div class="stat-tile" id="stat-signals">—</div>
+          <div class="stat-tile" id="stat-sessions">—</div>
+          <div class="stat-tile" id="stat-streak">—</div>
+          <div class="stat-tile" id="stat-hours">—</div>
+        </div>
+        <div id="stats-error" style="display:none;margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- LOCAL SCANS -->
+    <div id="scans" class="section">
+      <h2>Local Scans</h2>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="margin:0">Saved scan files</h3>
+          <button class="secondary" onclick="loadScans()" style="padding:5px 12px;font-size:0.8rem">&#8635; Refresh</button>
+        </div>
+        <div id="scans-list">
+          <div style="color:var(--sage-soft);font-size:13px">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div id="config" class="section" style="max-width:680px">
+      <h2>Configuration</h2>
+      <div class="card">
+        <h3>API Settings</h3>
+        <div class="form-row">
+          <label>API Base URL</label>
+          <input type="url" id="cfg-api-url" />
+        </div>
+        <hr class="divider" />
+        <h3>BLE Defaults</h3>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Interface</label>
+            <select id="cfg-ble-iface"><option value="">— detecting… —</option></select>
+          </div>
+          <div class="form-row">
+            <label>Scan Duration (seconds)</label>
+            <input type="number" id="cfg-ble-duration" min="1" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label>GPS Device <span id="gps-status-badge" class="status-badge badge-gray" style="margin-left:8px;vertical-align:middle"><span class="dot"></span>checking…</span></label>
+          <select id="cfg-gps-device"><option value="">— detecting… —</option></select>
+        </div>
+        <hr class="divider" />
+        <h3>WiFi Defaults</h3>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Interface</label>
+            <select id="cfg-wifi-iface"><option value="">— detecting… —</option></select>
+          </div>
+          <div class="form-row">
+            <label>Packet Count</label>
+            <input type="number" id="cfg-wifi-count" min="0" />
+          </div>
+        </div>
+        <hr class="divider" />
+        <h3>Local Save Directory</h3>
+        <div class="form-row">
+          <label>Scan output directory (leave blank for default)</label>
+          <input type="text" id="cfg-output-dir" placeholder="default: data/scans/ relative to app" />
+        </div>
+        <div class="btn-row">
+          <button onclick="saveConfig()">Save Configuration</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+<script>
+  let _pollTimers = {};
+
+  function show(section, el) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+    document.getElementById(section).classList.add('active');
+    if (el) el.classList.add('active');
+    if (section === 'scanners') { refreshStatus('ble'); refreshStatus('wifi'); loadConfig(); }
+    if (section === 'config') loadConfig();
+    if (section === 'auth') { loadTokenStatus(); loadConfig(); }
+    if (section === 'stats') loadStats();
+    if (section === 'scans') loadScans();
+  }
+
+  function flash(msg, ok = true) {
+    const el = document.getElementById('flash');
+    el.className = `alert ${ok ? 'alert-ok' : 'alert-err'}`;
+    el.textContent = msg;
+    el.style.display = 'block';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.style.display = 'none', 4000);
+  }
+
+  async function api(path, opts = {}) {
+    const r = await fetch(path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+    });
+    return r.json();
+  }
+
+  // ── Auth ─────────────────────────────────────────────────────────────────
+
+  async function loadTokenStatus() {
+    const cfg = await api('/api/config');
+    const el = document.getElementById('token-status');
+    if (cfg.has_token) {
+      el.innerHTML = '<span class="status-badge badge-green"><span class="dot"></span>Token saved</span>';
+    } else {
+      el.innerHTML = '<span class="status-badge badge-red"><span class="dot"></span>No token</span>';
+    }
+    const urlInput = document.getElementById('login-api-url');
+    if (!urlInput.value) urlInput.value = cfg.api_url || '';
+  }
+
+  async function fetchToken() {
+    const api_url = document.getElementById('login-api-url').value.trim();
+    const email   = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) { flash('Enter email and password.', false); return; }
+    const res = await api('/api/token', {
+      method: 'POST',
+      body: JSON.stringify({ api_url, email, password }),
+    });
+    flash(res.message, res.status === 'ok');
+    if (res.status === 'ok') { document.getElementById('login-password').value = ''; loadTokenStatus(); }
+  }
+
+  async function saveToken() {
+    const token = document.getElementById('paste-token').value.trim();
+    if (!token) { flash('Paste a token first.', false); return; }
+    const res = await api('/api/token', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+    flash(res.message, res.status === 'ok');
+    if (res.status === 'ok') { document.getElementById('paste-token').value = ''; loadTokenStatus(); }
+  }
+
+  async function clearToken() {
+    const res = await api('/api/token', { method: 'DELETE' });
+    flash(res.message, res.status === 'ok');
+    loadTokenStatus();
+  }
+
+  // ── Scanners ─────────────────────────────────────────────────────────────
+
+  function setBadge(scanner, running) {
+    const label = scanner.toUpperCase();
+    const badge    = document.getElementById(`${scanner}-badge`);
+    const startBtn = document.getElementById(`${scanner}-start-btn`);
+    const stopBtn  = document.getElementById(`${scanner}-stop-btn`);
+    if (running) {
+      badge.className = 'status-badge badge-green';
+      badge.innerHTML = `<span class="dot"></span>${label}: Running`;
+    } else {
+      badge.className = 'status-badge badge-gray';
+      badge.innerHTML = `<span class="dot"></span>${label}: Stopped`;
+    }
+    if (startBtn) startBtn.style.display = running ? 'none' : '';
+    if (stopBtn)  stopBtn.style.display  = running ? '' : 'none';
+
+    // Update Start All / Stop All based on combined state
+    const bleRunning  = document.getElementById('ble-badge')?.classList.contains('badge-green');
+    const wifiRunning = document.getElementById('wifi-badge')?.classList.contains('badge-green');
+    const anyRunning  = bleRunning || wifiRunning;
+    const bothRunning = bleRunning && wifiRunning;
+    const bothStartBtn = document.getElementById('both-start-btn');
+    const bothStopBtn  = document.getElementById('both-stop-btn');
+    if (bothStartBtn) bothStartBtn.style.display = bothRunning ? 'none' : '';
+    if (bothStopBtn)  bothStopBtn.style.display  = anyRunning  ? '' : 'none';
+  }
+
+  function renderLog(scanner, lines) {
+    const el = document.getElementById(`${scanner}-log`);
+    if (!lines || !lines.length) {
+      el.innerHTML = '<span style="color:var(--muted)">— no output —</span>';
+      return;
+    }
+    el.innerHTML = lines.map(l => {
+      let cls = 'log-line';
+      if (l.includes('failed') || l.includes('error') || l.includes('Error')) cls += ' err';
+      else if (l.includes('Uploaded') || l.includes('Saved') || l.includes('started')) cls += ' ok';
+      else if (l.includes('[manager]') || l.includes('Session') || l.includes('[+]')) cls += ' info';
+      return `<div class="${cls}">${escHtml(l)}</div>`;
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  async function refreshStatus(scanner) {
+    const data = await api(`/api/scanner/${scanner}/status`);
+    setBadge(scanner, data.running);
+    renderLog(scanner, data.output);
+    schedulePoll(scanner, data.running);
+  }
+
+  function schedulePoll(scanner, running) {
+    clearTimeout(_pollTimers[scanner]);
+    if (running) {
+      _pollTimers[scanner] = setTimeout(() => refreshStatus(scanner), 2000);
+    }
+  }
+
+  async function startScanner(scanner) {
+    const res = await api(`/api/scanner/${scanner}/start`, { method: 'POST', body: '{}' });
+    flash(res.message, res.status === 'ok');
+    setTimeout(() => refreshStatus(scanner), 500);
+  }
+
+  async function stopScanner(scanner) {
+    const res = await api(`/api/scanner/${scanner}/stop`, { method: 'POST', body: '{}' });
+    flash(res.message, res.status === 'ok');
+    clearTimeout(_pollTimers[scanner]);
+    setTimeout(() => refreshStatus(scanner), 300);
+  }
+
+  async function startBoth() {
+    const res = await api('/api/scanner/both/start', { method: 'POST', body: '{}' });
+    if (res.results) {
+      const msgs = Object.entries(res.results).map(([k, v]) => `${k.toUpperCase()}: ${v.message}`).join('  |  ');
+      flash(msgs, Object.values(res.results).every(v => v.ok));
+    } else {
+      flash(res.message, res.status === 'ok');
+    }
+    setTimeout(() => { refreshStatus('ble'); refreshStatus('wifi'); }, 500);
+  }
+
+  async function stopBoth() {
+    const res = await api('/api/scanner/both/stop', { method: 'POST', body: '{}' });
+    flash('Scanners stopped.', res.status === 'ok');
+    ['ble', 'wifi'].forEach(s => clearTimeout(_pollTimers[s]));
+    setTimeout(() => { refreshStatus('ble'); refreshStatus('wifi'); }, 300);
+  }
+
+  // ── Config ───────────────────────────────────────────────────────────────
+
+  async function loadConfig() {
+    const [cfg, bleData, wifiData, gpsData, connData] = await Promise.all([
+      api('/api/config'),
+      api('/api/ble/interfaces'),
+      api('/api/wifi/interfaces'),
+      api('/api/gps/devices'),
+      api('/api/connectivity'),
+    ]);
+
+    // Connectivity status (Auth page card + used in summaries below)
+    const connEl   = document.getElementById('connectivity-status');
+    const connNote = document.getElementById('connectivity-note');
+    if (connEl) {
+      if (connData.reachable) {
+        connEl.innerHTML = '<span class="status-badge badge-green"><span class="dot"></span>API reachable</span>';
+        if (connNote) connNote.textContent = '';
+      } else {
+        connEl.innerHTML = '<span class="status-badge badge-yellow"><span class="dot"></span>API unreachable</span>';
+        if (connNote) connNote.textContent = (connData.reason || 'Cannot reach API.') +
+          ' If this device has multiple interfaces (e.g. Ethernet + WiFi in monitor mode), check that the interface with internet access is up.';
+      }
+    }
+
+    // Populate Config form fields
+    document.getElementById('cfg-api-url').value      = cfg.api_url || '';
+    document.getElementById('cfg-ble-duration').value = cfg.ble_duration ?? 10;
+    document.getElementById('cfg-wifi-count').value   = cfg.wifi_count ?? 0;
+    document.getElementById('cfg-output-dir').value   = cfg.output_dir || '';
+
+    // options are now objects {name,...} for BLE/WiFi, plain strings for GPS
+    const getName = o => (typeof o === 'string') ? o : o.name;
+    const bleIfaces  = bleData.interfaces  || [];
+    const wifiIfaces = wifiData.interfaces || [];
+    const gpsDevs    = gpsData.devices     || [];
+
+    const bleIface  = cfg.ble_iface  || (bleIfaces[0]  ? getName(bleIfaces[0])  : '');
+    const wifiIface = cfg.wifi_iface || (wifiIfaces[0] ? getName(wifiIfaces[0]) : '');
+    const gpsDev    = cfg.gps_device || gpsDevs[0] || '';
+
+    fillSelect('cfg-ble-iface',  bleIfaces,  bleIface,  'No BLE adapter detected');
+    fillSelect('cfg-wifi-iface', wifiIfaces, wifiIface, 'No WiFi adapter detected');
+    fillSelect('cfg-gps-device', gpsDevs,    gpsDev,    'No GPS device detected');
+
+    // GPS badge
+    const gpsBadge = document.getElementById('gps-status-badge');
+    if (gpsBadge) {
+      if (gpsData.detected) {
+        gpsBadge.className = 'status-badge badge-green';
+        gpsBadge.innerHTML = `<span class="dot"></span>${gpsData.devices.length} found`;
+      } else {
+        gpsBadge.className = 'status-badge badge-gray';
+        gpsBadge.innerHTML = '<span class="dot"></span>not connected';
+      }
+    }
+
+    const gpsOk = !!cfg.gps_device;
+
+    // BLE scanner summary + adapter check
+    const bleSummaryEl  = document.getElementById('ble-summary');
+    const bleStartBtn   = document.getElementById('ble-start-btn');
+    if (bleSummaryEl) {
+      const bleNames = bleIfaces.map(getName);
+      const bleObj   = bleIfaces.find(o => getName(o) === bleIface);
+      const bleOk    = bleNames.includes(bleIface);
+      const warnings = [];
+      if (bleIfaces.length === 0) warnings.push('No BLE adapter detected — plug in a USB BLE dongle');
+      else if (!bleOk) warnings.push(`Adapter "${bleIface}" not found — available: ${bleNames.join(', ')}`);
+      if (!gpsOk) warnings.push('No GPS device configured — required for scanning');
+      if (warnings.length) {
+        bleSummaryEl.innerHTML = warnings.map(w => `<span class="summary-warn">⚠ ${escHtml(w)}</span>`).join('<br>');
+        if (bleStartBtn) bleStartBtn.disabled = true;
+      } else {
+        const devLabel = bleObj && bleObj.device_name ? `  (${bleObj.device_name})` : '';
+        const busLabel = bleObj && bleObj.bus ? `  ·  ${bleObj.bus}` : '';
+        const connLine = connData.reachable ? '' : '  ·  ⚠ API offline — scans will save locally';
+        bleSummaryEl.textContent = `${bleIface}${devLabel}${busLabel}  ·  ${cfg.ble_duration ?? 10}s scan duration  ·  GPS: ${cfg.gps_device}${connLine}`;
+        if (bleStartBtn) bleStartBtn.disabled = false;
+      }
+    }
+
+    // WiFi scanner summary + adapter check
+    const wifiSummaryEl = document.getElementById('wifi-summary');
+    const wifiStartBtn  = document.getElementById('wifi-start-btn');
+    if (wifiSummaryEl) {
+      const wifiNames = wifiIfaces.map(getName);
+      const wifiObj   = wifiIfaces.find(o => getName(o) === wifiIface);
+      const wifiOk    = wifiNames.includes(wifiIface);
+      const warnings = [];
+      if (wifiIfaces.length === 0) warnings.push('No WiFi adapter detected — plug in a USB WiFi adapter with monitor-mode support');
+      else if (!wifiOk) warnings.push(`Adapter "${wifiIface}" not found — available: ${wifiNames.join(', ')}`);
+      if (!gpsOk) warnings.push('No GPS device configured — required for scanning');
+      if (warnings.length) {
+        wifiSummaryEl.innerHTML = warnings.map(w => `<span class="summary-warn">⚠ ${escHtml(w)}</span>`).join('<br>');
+        if (wifiStartBtn) wifiStartBtn.disabled = true;
+      } else {
+        const devLabel  = wifiObj && wifiObj.device_name ? `  (${wifiObj.device_name})` : '';
+        const netLabel  = wifiObj ? (wifiObj.has_internet ? '  ·  ⚠ has internet — consider using for scanning only if another interface provides connectivity' : '') : '';
+        const countLine = cfg.wifi_count ? `${cfg.wifi_count} packets` : '∞ packets';
+        const connLine  = connData.reachable ? '' : '  ·  ⚠ API offline — scans will save locally';
+        wifiSummaryEl.textContent = `${wifiIface}${devLabel}  ·  ${countLine}  ·  GPS: ${cfg.gps_device}${netLabel}${connLine}`;
+        if (wifiStartBtn) wifiStartBtn.disabled = false;
+      }
+    }
+  }
+
+  async function saveConfig() {
+    const body = {
+      api_url:      document.getElementById('cfg-api-url').value.trim(),
+      ble_iface:    document.getElementById('cfg-ble-iface').value,
+      ble_duration: parseInt(document.getElementById('cfg-ble-duration').value),
+      wifi_iface:   document.getElementById('cfg-wifi-iface').value,
+      wifi_count:   parseInt(document.getElementById('cfg-wifi-count').value),
+      output_dir:   document.getElementById('cfg-output-dir').value.trim(),
+      gps_device:   document.getElementById('cfg-gps-device').value || null,
+    };
+    const res = await api('/api/config', { method: 'POST', body: JSON.stringify(body) });
+    flash(res.status === 'ok' ? 'Configuration saved.' : 'Save failed.', res.status === 'ok');
+  }
+
+  // ── Stats ────────────────────────────────────────────────────────────────
+
+  function statTile(id, value, label) {
+    document.getElementById(id).innerHTML =
+      `<div class="stat-value">${value}</div><div class="stat-label">${label}</div>`;
+  }
+
+  async function loadStats() {
+    const errEl = document.getElementById('stats-error');
+    errEl.style.display = 'none';
+    ['stat-signals','stat-sessions','stat-streak','stat-hours'].forEach(id => {
+      document.getElementById(id).innerHTML =
+        '<div class="stat-value" style="color:var(--sage-soft)">…</div>';
+    });
+
+    const data = await api('/api/me');
+
+    if (data.status === 'error') {
+      errEl.className = 'alert alert-err';
+      errEl.textContent = data.message;
+      errEl.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('stats-email').textContent = data.email || '—';
+    statTile('stat-signals', data.signalsUploaded.toLocaleString(), 'Signals Uploaded');
+    statTile('stat-sessions', data.scanSessions.toLocaleString(), 'Scan Sessions');
+    statTile('stat-streak',  data.scanStreakDays.toLocaleString(), 'Day Streak');
+    statTile('stat-hours',   parseFloat(data.hoursActive).toFixed(1) + 'h', 'Hours Active');
+  }
+
+  // ── Local Scans ──────────────────────────────────────────────────────────
+
+  let _scanFiles = [];
+
+  async function loadScans() {
+    const container = document.getElementById('scans-list');
+    container.innerHTML = '<div style="color:var(--sage-soft);font-size:13px">Loading…</div>';
+    const data = await api('/api/scans');
+    _scanFiles = (data.files || []).map(f => f.filename);
+    if (!_scanFiles.length) {
+      container.innerHTML = '<div style="color:var(--sage-soft);font-size:13px">No saved scan files found.</div>';
+      return;
+    }
+    container.innerHTML = `
+      <table class="scans-table">
+        <thead><tr>
+          <th>File</th><th>Records</th><th>Size</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${data.files.map((f, i) => `
+            <tr id="scan-row-${i}">
+              <td class="scan-fname">${escHtml(f.filename)}</td>
+              <td>${f.records.toLocaleString()}</td>
+              <td>${f.size_kb} KB</td>
+              <td><span class="scan-status" id="scan-status-${i}">—</span></td>
+              <td>
+                <div class="btn-row" style="margin:0;gap:6px">
+                  <button style="padding:4px 10px;font-size:12px" onclick="uploadScan(${i})">Upload</button>
+                  <button class="danger" style="padding:4px 10px;font-size:12px" onclick="deleteScan(${i})">Delete</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function uploadScan(idx) {
+    const filename = _scanFiles[idx];
+    if (!filename) return;
+    const statusEl = document.getElementById(`scan-status-${idx}`);
+    if (statusEl) { statusEl.textContent = 'Uploading…'; statusEl.style.color = 'var(--amber)'; }
+    const res = await api(`/api/scans/${encodeURIComponent(filename)}/upload`, { method: 'POST', body: '{}' });
+    if (statusEl) {
+      if (res.status === 'ok') {
+        statusEl.textContent = `✓ ${res.accepted} accepted`;
+        statusEl.style.color = 'var(--sage)';
+      } else {
+        statusEl.textContent = `✗ ${res.message || 'failed'}`;
+        statusEl.style.color = 'var(--coral)';
+      }
+    }
+    const msg = res.status === 'ok'
+      ? `${filename}: ${res.accepted} accepted, ${res.rejected} rejected${res.skipped ? `, ${res.skipped} skipped` : ''} (${res.batches} batch${res.batches !== 1 ? 'es' : ''})`
+      : (res.message || 'Upload failed.');
+    flash(msg, res.status === 'ok');
+  }
+
+  async function deleteScan(idx) {
+    const filename = _scanFiles[idx];
+    if (!filename) return;
+    if (!confirm(`Delete ${filename}?`)) return;
+    const res = await api(`/api/scans/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+    flash(res.status === 'ok' ? `Deleted ${filename}.` : (res.message || 'Delete failed.'), res.status === 'ok');
+    if (res.status === 'ok') loadScans();
+  }
+
+  // ── Interface helpers ────────────────────────────────────────────────────
+
+  async function autosaveField(key, value) {
+    await api('/api/config', { method: 'POST', body: JSON.stringify({ [key]: value }) });
+  }
+
+  function fillSelect(selectId, options, selectedValue, emptyLabel) {
+    const el = document.getElementById(selectId);
+    if (!el) return;
+    if (!options.length) {
+      el.innerHTML = `<option value="">${emptyLabel}</option>`;
+      return;
+    }
+    // options may be plain strings or {name, device_name?, has_internet?, bus?}
+    const getName  = o => (typeof o === 'string') ? o : o.name;
+    const getLabel = o => {
+      if (typeof o === 'string') return o;
+      let label = o.name;
+      if (o.device_name) label += `  —  ${o.device_name}`;
+      if (o.bus)         label += `  (${o.bus})`;
+      if (o.has_internet !== undefined) label += o.has_internet ? '  [online]' : '  [no internet]';
+      return label;
+    };
+    const names = options.map(getName);
+    // Preserve a previously-saved value even if hardware is currently unplugged
+    const allOptions = selectedValue && !names.includes(selectedValue)
+      ? [{ name: selectedValue }, ...options]
+      : options;
+    el.innerHTML = allOptions.map(o => {
+      const val = getName(o);
+      return `<option value="${escHtml(val)}"${val === selectedValue ? ' selected' : ''}>${escHtml(getLabel(o))}</option>`;
+    }).join('');
+  }
+
+
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  // ── Theme ────────────────────────────────────────────────────────────────
+
+  function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    applyTheme(isDark ? 'light' : 'dark');
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('wf-theme', theme);
+    document.getElementById('theme-btn').textContent =
+      theme === 'dark' ? '☀ Light mode' : '☾ Dark mode';
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  applyTheme(localStorage.getItem('wf-theme') || 'light');
+  loadTokenStatus();
+  loadConfig();
+</script>
+</body>
+</html>

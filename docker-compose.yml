@@ -1,0 +1,17 @@
+services:
+  wayfindrs-manager:
+    build: .
+    container_name: wayfindrs-manager
+    # host networking + privileged gives the container direct access to all
+    # Bluetooth, WiFi, and USB hardware — required for BLE scanning and
+    # WiFi monitor mode. All USB devices (GPS, dongles) are accessible
+    # automatically; no explicit devices: entries needed.
+    network_mode: host
+    privileged: true
+    pid: host
+    volumes:
+      - ./data:/app/data
+    # To pre-seed settings instead of configuring through the UI, add an
+    # environment: block with any of: WAYFINDRS_API_URL, WAYFINDRS_TOKEN,
+    # WAYFINDRS_GPS_DEVICE (e.g. /dev/ttyUSB0 or /dev/ttyACM0)
+    restart: unless-stopped

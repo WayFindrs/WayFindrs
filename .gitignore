@@ -1,0 +1,7 @@
+data/*
+!data/config.json
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.env

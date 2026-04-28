@@ -1,0 +1,10 @@
+{
+  "api_url": "https://wayfindrs.com",
+  "token": null,
+  "ble_duration": 10,
+  "ble_iface": "hci0",
+  "wifi_iface": "wlan0",
+  "wifi_count": 0,
+  "output_dir": null,
+  "gps_device": null
+}
