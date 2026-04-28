@@ -354,7 +354,24 @@ def handle_packet(pkt, local_mode=False, api_url=None, token=None, output_dir=No
             flush_batch(api_url, token, output_dir)
 
 
+def set_iface_managed(iface, managed):
+    """Tell NetworkManager (if present) to manage or unmanage the interface."""
+    try:
+        state = "yes" if managed else "no"
+        result = subprocess.run(
+            ["nmcli", "device", "set", iface, "managed", state],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            print(f"[+] {iface} {'returned to' if managed else 'removed from'} NetworkManager.")
+    except FileNotFoundError:
+        pass  # nmcli not available on this system
+    except Exception:
+        pass
+
+
 def ensure_monitor_mode(iface):
+    set_iface_managed(iface, False)
     try:
         output = subprocess.check_output(["iwconfig", iface], stderr=subprocess.STDOUT).decode()
         if "Mode:Monitor" in output:
@@ -445,6 +462,7 @@ def main():
 
     def shutdown(sig, frame):
         print("\nShutting down...")
+        set_iface_managed(iface, True)
         if not local_mode:
             flush_batch(args.api_url, token, args.output_dir)
         if session_started and not local_mode:
@@ -470,6 +488,7 @@ def main():
     finally:
         if _stop_event.is_set():
             print("Stopped due to token expiry.")
+        set_iface_managed(iface, True)
         if not local_mode:
             flush_batch(args.api_url, token, args.output_dir)
         if session_started and not local_mode:

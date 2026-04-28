@@ -4,9 +4,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bluez \
     bluetooth \
     libbluetooth-dev \
+    rfkill \
     wireless-tools \
     iw \
     iproute2 \
+    network-manager \
     gpsd \
     gcc \
     make \

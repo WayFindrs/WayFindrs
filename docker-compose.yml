@@ -11,6 +11,7 @@ services:
     pid: host
     volumes:
       - ./data:/app/data
+      - /var/run/dbus:/var/run/dbus
     # To pre-seed settings instead of configuring through the UI, add an
     # environment: block with any of: WAYFINDRS_API_URL, WAYFINDRS_TOKEN,
     # WAYFINDRS_GPS_DEVICE (e.g. /dev/ttyUSB0 or /dev/ttyACM0)

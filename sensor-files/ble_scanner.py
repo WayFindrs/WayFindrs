@@ -201,8 +201,12 @@ class GpsPoller(threading.Thread):
 
 
 def ensure_hci_up(iface_idx):
-    """Bring the HCI device up if it is currently down."""
+    """Clear any rfkill soft-block and bring the HCI device up for direct scanning."""
     iface = f"hci{iface_idx}"
+    try:
+        subprocess.run(["rfkill", "unblock", "bluetooth"], capture_output=True, timeout=5)
+    except Exception:
+        pass
     try:
         result = subprocess.run(["hciconfig", iface, "up"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
