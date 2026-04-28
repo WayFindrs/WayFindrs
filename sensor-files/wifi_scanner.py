@@ -147,28 +147,6 @@ def get_token(api_url, email, password):
     return resp.json()["access_token"]
 
 
-def start_session(api_url, token):
-    resp = requests.post(
-        f"{api_url}/api/mobile/session/start",
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=10,
-    )
-    resp.raise_for_status()
-    print("Session started.")
-
-
-def end_session(api_url, token):
-    try:
-        requests.post(
-            f"{api_url}/api/mobile/session/end",
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=10,
-        )
-        print("Session ended.")
-    except Exception as e:
-        print(f"Warning: could not end session: {e}")
-
-
 def freq_to_channel(freq_mhz):
     if not freq_mhz:
         return None
@@ -412,8 +390,6 @@ def main():
                         help="Bearer token (or set WAYFINDRS_TOKEN env var)")
     parser.add_argument("--email", help="Email address to log in and obtain a token")
     parser.add_argument("--password", help="Password to log in and obtain a token")
-    parser.add_argument("--skip-session", action="store_true",
-                        help="Skip session start/end (session managed externally, e.g. by the manager)")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR,
                         help="Directory for local JSON saves (default: data/scans/)")
     parser.add_argument("--gps-device", default=os.environ.get("WAYFINDRS_GPS_DEVICE", ""),
@@ -446,27 +422,12 @@ def main():
     iface = ensure_monitor_mode(args.iface)
 
     local_mode = args.local
-    session_started = False
-
-    if not local_mode and not args.skip_session:
-        try:
-            start_session(args.api_url, token)
-            session_started = True
-        except (requests.ConnectionError, requests.Timeout) as e:
-            print(f"Cannot reach API ({e}) — switching to local mode for this session.")
-            print(f"Scans will be saved to {args.output_dir} and can be uploaded later via the manager.")
-            local_mode = True
-        except Exception as e:
-            print(f"Session start failed ({e}) — switching to local mode for this session.")
-            local_mode = True
 
     def shutdown(sig, frame):
         print("\nShutting down...")
         set_iface_managed(iface, True)
         if not local_mode:
             flush_batch(args.api_url, token, args.output_dir)
-        if session_started and not local_mode:
-            end_session(args.api_url, token)
         sys.exit(0)
 
     signal.signal(signal.SIGINT, shutdown)
@@ -491,8 +452,6 @@ def main():
         set_iface_managed(iface, True)
         if not local_mode:
             flush_batch(args.api_url, token, args.output_dir)
-        if session_started and not local_mode:
-            end_session(args.api_url, token)
 
 
 if __name__ == "__main__":

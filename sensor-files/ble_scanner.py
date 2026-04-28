@@ -37,28 +37,6 @@ def get_token(api_url, email, password):
     return resp.json()["access_token"]
 
 
-def start_session(api_url, token):
-    resp = requests.post(
-        f"{api_url}/api/mobile/session/start",
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=10,
-    )
-    resp.raise_for_status()
-    print("Session started.")
-
-
-def end_session(api_url, token):
-    try:
-        requests.post(
-            f"{api_url}/api/mobile/session/end",
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=10,
-        )
-        print("Session ended.")
-    except Exception as e:
-        print(f"Warning: could not end session: {e}")
-
-
 def get_gps_coords():
     try:
         if _gpsd and _gpsd.fix and _gpsd.fix.latitude and _gpsd.fix.longitude:
@@ -277,8 +255,6 @@ def main():
                         help="Bearer token (or set WAYFINDRS_TOKEN env var)")
     parser.add_argument("--email", help="Email address to log in and obtain a token")
     parser.add_argument("--password", help="Password to log in and obtain a token")
-    parser.add_argument("--skip-session", action="store_true",
-                        help="Skip session start/end (session managed externally, e.g. by the manager)")
     args = parser.parse_args()
 
     token = args.token
@@ -308,24 +284,9 @@ def main():
         sys.exit(1)
 
     local_mode = args.local
-    session_started = False
-
-    if not local_mode and not args.skip_session:
-        try:
-            start_session(args.api_url, token)
-            session_started = True
-        except (requests.ConnectionError, requests.Timeout) as e:
-            print(f"Cannot reach API ({e}) — switching to local mode for this session.")
-            print(f"Scans will be saved to {args.output_dir} and can be uploaded later via the manager.")
-            local_mode = True
-        except Exception as e:
-            print(f"Session start failed ({e}) — switching to local mode for this session.")
-            local_mode = True
 
     def shutdown(sig, frame):
         print("\nShutting down...")
-        if session_started and not local_mode:
-            end_session(args.api_url, token)
         sys.exit(0)
 
     signal.signal(signal.SIGINT, shutdown)
@@ -337,12 +298,7 @@ def main():
             time.sleep(1)
     except TokenExpiredError as e:
         print(f"\n{e}")
-        if session_started:
-            end_session(args.api_url, token)
         sys.exit(1)
-    finally:
-        if session_started and not local_mode:
-            end_session(args.api_url, token)
 
 
 if __name__ == "__main__":

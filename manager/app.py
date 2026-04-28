@@ -31,57 +31,6 @@ _processes = {
     "wifi": {"proc": None, "output": [], "lock": threading.Lock()},
 }
 
-# One shared session across all running scanners
-_session = {"active": False, "lock": threading.Lock()}
-
-
-def _session_start(cfg):
-    """Start a session if one isn't already active. Returns True on success."""
-    with _session["lock"]:
-        if _session["active"]:
-            return True
-        token = cfg.get("token")
-        if not token:
-            return False
-        try:
-            resp = requests.post(
-                f"{cfg['api_url']}/api/mobile/session/start",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=10,
-            )
-            if resp.ok:
-                _session["active"] = True
-                return True
-        except Exception:
-            pass
-        return False
-
-
-def _session_end_if_idle(cfg):
-    """End the session if no scanners are still running."""
-    with _session["lock"]:
-        if not _session["active"]:
-            return
-        still_running = any(
-            s["proc"] is not None and s["proc"].poll() is None
-            for s in _processes.values()
-        )
-        if still_running:
-            return
-        _session["active"] = False
-    token = cfg.get("token")
-    if not token:
-        return
-    try:
-        requests.post(
-            f"{cfg['api_url']}/api/mobile/session/end",
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=10,
-        )
-    except Exception:
-        pass
-
-
 def resolve_output_dir(cfg):
     return cfg.get("output_dir") or DEFAULT_OUTPUT_DIR
 
@@ -132,13 +81,9 @@ def _stream(slot, proc):
             slot["output"].append(line.rstrip())
             if len(slot["output"]) > 150:
                 slot["output"].pop(0)
-    # Process has fully exited — clear proc reference, then end session if idle.
-    # This is the ONLY place that clears slot["proc"] and ends the session so that
-    # the scanner's shutdown flush completes before the session is torn down.
     with slot["lock"]:
         if slot["proc"] is proc:
             slot["proc"] = None
-    _session_end_if_idle(load_config())
 
 
 @app.route("/")
@@ -310,8 +255,6 @@ def _build_scanner_cmd(scanner, cfg, local_mode=False):
         ]
     if local_mode:
         cmd.append("--local")
-    else:
-        cmd.append("--skip-session")
     return cmd
 
 
@@ -322,19 +265,10 @@ def _launch_scanner(scanner, cfg):
         if slot["proc"] and slot["proc"].poll() is None:
             return False, f"{scanner.upper()} scanner is already running."
 
-    # Start shared session if not already active; fall back to local on failure
-    local_mode = False
-    session_ok = _session_start(cfg)
-    if not session_ok:
-        local_mode = True
-        msg = "[manager] Cannot reach API — running in local mode."
-    else:
-        msg = None
-
     token = cfg.get("token")
     api_url = cfg["api_url"]
     env = {**os.environ, "WAYFINDRS_TOKEN": token or "", "WAYFINDRS_API_URL": api_url, "PYTHONUNBUFFERED": "1"}
-    cmd = _build_scanner_cmd(scanner, cfg, local_mode=local_mode)
+    cmd = _build_scanner_cmd(scanner, cfg, local_mode=False)
 
     try:
         proc = subprocess.Popen(
@@ -348,11 +282,8 @@ def _launch_scanner(scanner, cfg):
         with slot["lock"]:
             slot["proc"] = proc
             slot["output"] = [f"[manager] {scanner.upper()} scanner started (PID {proc.pid})"]
-            if msg:
-                slot["output"].append(msg)
         threading.Thread(target=_stream, args=(slot, proc), daemon=True).start()
-        mode_label = "local mode" if local_mode else "upload mode"
-        return True, f"{scanner.upper()} scanner started ({mode_label})."
+        return True, f"{scanner.upper()} scanner started."
     except Exception as e:
         return False, str(e)
 
@@ -479,17 +410,9 @@ def upload_scan(filename):
     except Exception as e:
         return jsonify({"status": "error", "message": f"Failed to read file: {e}"}), 500
 
-    # Ensure a session is active — the API rejects bulk uploads without one
-    if not _session_start(cfg):
-        return jsonify({
-            "status": "error",
-            "message": "Cannot start a session — check API connectivity and token.",
-        }), 503
-
     api_url = cfg["api_url"]
     CHUNK = 50
     accepted = rejected = skipped = batches = 0
-    session_lost = False
 
     for i in range(0, len(records), CHUNK):
         batch = records[i:i + CHUNK]
@@ -500,13 +423,6 @@ def upload_scan(filename):
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=30,
             )
-            if resp.status_code == 403:
-                # Session ended between batches (token expired or API closed it)
-                with _session["lock"]:
-                    _session["active"] = False
-                skipped += len(records) - i
-                session_lost = True
-                break
             if resp.ok:
                 r = resp.json()
                 accepted += r.get("accepted", 0)
@@ -517,20 +433,14 @@ def upload_scan(filename):
             skipped += len(batch)
         batches += 1
 
-    # End session if we opened it and no scanners are still running
-    _session_end_if_idle(cfg)
-
-    result = {
+    return jsonify({
         "status": "ok",
         "total": len(records),
         "accepted": accepted,
         "rejected": rejected,
         "skipped": skipped,
         "batches": batches,
-    }
-    if session_lost:
-        result["warning"] = "Session expired mid-upload — re-authenticate and retry."
-    return jsonify(result)
+    })
 
 
 @app.route("/api/scans/<filename>", methods=["DELETE"])

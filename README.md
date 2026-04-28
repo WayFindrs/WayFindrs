@@ -138,21 +138,16 @@ python manager/app.py
 ## Authentication
 
 The scanners use the WayFindrs mobile API (`POST /api/mobile/login`).
-Tokens expire after **45 minutes**. If a token expires mid-scan the scanner stops cleanly,
+Tokens expire after **12 hours**. If a token expires mid-scan the scanner stops cleanly,
 saves any buffered data locally, and prints a message asking you to re-authenticate.
 Re-authenticate through the manager UI or by re-running a script with `--email`/`--password`.
 
 You can also set the `WAYFINDRS_TOKEN` and `WAYFINDRS_API_URL` environment variables
 to avoid passing credentials on the command line.
 
-### Session model
-
-Each scanner run automatically manages a scan session:
-1. `POST /api/mobile/session/start` — opens a session on startup. If the API is unreachable the scanner switches to local-save mode automatically for the entire session (see [Offline operation](#offline-operation--resilience)).
-2. Packets are uploaded in bulk via `POST /api/mobile/upload/bulk` (up to 500 records per request)
-3. `POST /api/mobile/session/end` — closes the session on `SIGINT`/`SIGTERM` or normal exit
-
-Sessions ≥ 5 minutes with at least one packet contribute to your WayFindrs stats.
+Packets are uploaded in bulk via `POST /api/mobile/upload/bulk` (up to 500 records per request).
+Contribution stats (signals uploaded, scan sessions, streak, hours active) are derived
+server-side from packet timestamps — no session management is required on the client.
 
 ---
 
@@ -162,7 +157,7 @@ The scanners are designed to keep collecting data regardless of network conditio
 
 | Situation | Behaviour |
 |-----------|-----------|
-| API unreachable at startup | Scanner switches to local-save mode for the whole session; prints a message and the save directory |
+| API unreachable at startup | Scanner attempts to upload; first failed batch is written locally and scanning continues |
 | Network drops mid-scan | Each failed upload batch is written to a local JSON file; scanning continues uninterrupted |
 | Token expires (HTTP 401) mid-scan | Remaining buffered data is saved locally, scanner stops cleanly with a re-authenticate message |
 | GPS fix temporarily lost | Records without coordinates are skipped and counted; a log message is printed every 10 skipped packets and again when the fix is restored |
@@ -204,16 +199,7 @@ sudo usermod -aG docker $USER
 docker --version
 ```
 
-**2. Stop the host Bluetooth daemon**
-
-`bluepy` opens raw HCI sockets directly. If `bluetoothd` is running on the host and has claimed the adapter, BLE scanning will fail even inside a privileged container. Stop and disable it:
-
-```bash
-sudo systemctl stop bluetooth
-sudo systemctl disable bluetooth
-```
-
-**3. Clone and start**
+**2. Clone and start**
 
 ```bash
 git clone https://github.com/WayFindrs/WayFindrs.git
@@ -247,13 +233,6 @@ docker compose down        # stops and removes the container (requires 'up -d' t
 ```bash
 sudo apt-get install -y bluez bluetooth libbluetooth-dev wireless-tools iw iproute2 gpsd python3-dev gcc
 pip3 install -r requirements.txt
-```
-
-Stop the Bluetooth daemon so `bluepy` can access the HCI socket directly:
-
-```bash
-sudo systemctl stop bluetooth
-sudo systemctl disable bluetooth
 ```
 
 Then run individual scripts directly (see usage above) or start the manager:
