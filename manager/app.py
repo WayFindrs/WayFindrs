@@ -132,7 +132,12 @@ def _stream(slot, proc):
             slot["output"].append(line.rstrip())
             if len(slot["output"]) > 150:
                 slot["output"].pop(0)
-    # Process exited (normal stop, crash, or token expiry) — clean up session
+    # Process has fully exited — clear proc reference, then end session if idle.
+    # This is the ONLY place that clears slot["proc"] and ends the session so that
+    # the scanner's shutdown flush completes before the session is torn down.
+    with slot["lock"]:
+        if slot["proc"] is proc:
+            slot["proc"] = None
     _session_end_if_idle(load_config())
 
 
@@ -328,7 +333,7 @@ def _launch_scanner(scanner, cfg):
 
     token = cfg.get("token")
     api_url = cfg["api_url"]
-    env = {**os.environ, "WAYFINDRS_TOKEN": token or "", "WAYFINDRS_API_URL": api_url}
+    env = {**os.environ, "WAYFINDRS_TOKEN": token or "", "WAYFINDRS_API_URL": api_url, "PYTHONUNBUFFERED": "1"}
     cmd = _build_scanner_cmd(scanner, cfg, local_mode=local_mode)
 
     try:
@@ -393,11 +398,9 @@ def stop_scanner(scanner):
         if not proc or proc.poll() is not None:
             return jsonify({"status": "error", "message": f"{scanner.upper()} scanner is not running."})
         proc.terminate()
-        slot["proc"] = None
-        slot["output"].append(f"[manager] {scanner.upper()} scanner stopped.")
+        slot["output"].append(f"[manager] {scanner.upper()} scanner stopping...")
 
-    _session_end_if_idle(load_config())
-    return jsonify({"status": "ok", "message": f"{scanner.upper()} scanner stopped."})
+    return jsonify({"status": "ok", "message": f"{scanner.upper()} scanner stopping."})
 
 
 @app.route("/api/scanner/both/stop", methods=["POST"])
@@ -409,12 +412,10 @@ def stop_both_scanners():
             proc = slot["proc"]
             if proc and proc.poll() is None:
                 proc.terminate()
-                slot["proc"] = None
-                slot["output"].append(f"[manager] {scanner.upper()} scanner stopped.")
-                results[scanner] = "stopped"
+                slot["output"].append(f"[manager] {scanner.upper()} scanner stopping...")
+                results[scanner] = "stopping"
             else:
                 results[scanner] = "was not running"
-    _session_end_if_idle(load_config())
     return jsonify({"status": "ok", "results": results})
 
 
