@@ -157,7 +157,7 @@ server-side from packet timestamps — no session management is required on the 
 
 The scanners are designed to keep collecting data regardless of network conditions.
 
-| Situation | Behaviour |
+| Situation | Behavior |
 |-----------|-----------|
 | API unreachable at startup | Scanner attempts to upload; first failed batch is written locally and scanning continues |
 | Network drops mid-scan | Each failed upload batch is written to a local JSON file; scanning continues uninterrupted |
