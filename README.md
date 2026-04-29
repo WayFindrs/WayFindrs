@@ -125,6 +125,8 @@ A lightweight Flask web interface for managing sensor scripts on a device.
 - Light / dark mode toggle (preference saved in browser)
 - Persistent configuration stored in `data/config.json`
 
+![WayFindrs Manager — Config tab](images/wayfindrs-manager-config.png)
+
 **Run manually**
 
 ```bash
@@ -208,6 +210,8 @@ docker compose up -d
 ```
 
 Then open **http://localhost:8080** in a browser and configure your adapters in the **Config** tab. Note: The manager application listens on all interfaces, so you can access it from another device on the same LAN as needed.
+
+![WayFindrs Manager — Scanners tab](images/wayfindrs-manager-scanners.png)
 
 > **Hardware access:** The container uses `network_mode: host` and `privileged: true`
 > so scanner subprocesses can reach all Bluetooth, WiFi, and USB hardware directly.
