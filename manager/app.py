@@ -127,6 +127,10 @@ def set_token():
     try:
         resp = requests.post(
             f"{api_url}/api/mobile/login",
+            headers={
+               "accept": "application/json",
+               "Content-Type": "application/json",
+            },
             json={"email": email, "password": password},
             timeout=10,
         )
