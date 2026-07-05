@@ -162,6 +162,8 @@ def freq_to_channel(freq_mhz):
 
 
 def extract_ssid(pkt):
+    """Return the SSID string, "" for a wildcard/broadcast probe (present but
+    zero-length), or None if no SSID element exists on the frame at all."""
     if not pkt.haslayer(Dot11Elt):
         return None
     elt = pkt.getlayer(Dot11Elt)
@@ -277,21 +279,62 @@ _gps_skip_count = 0
 _gps_skip_lock = threading.Lock()
 
 
+# 802.11 management subtypes we care about: type=0 (management) for all three.
+MGMT_SUBTYPES = {
+    4: "Probe Request",
+    5: "Probe Response",
+    8: "Beacon",
+}
+
+# Beacons in particular are sent continuously (~10/sec per AP). Debounce so we
+# only record a given (mac, ssid, subtype) combo once per window, instead of
+# flooding storage/upload with near-duplicate sightings.
+DEBOUNCE_SECONDS = float(os.environ.get("WAYFINDRS_DEBOUNCE_SECONDS", "30"))
+_last_seen: dict = {}
+_last_seen_lock = threading.Lock()
+
+
+def _should_record(key, now):
+    """Return True if this (mac, ssid, subtype) hasn't been seen within the debounce window."""
+    with _last_seen_lock:
+        last = _last_seen.get(key)
+        if last is not None and (now - last) < DEBOUNCE_SECONDS:
+            return False
+        _last_seen[key] = now
+        return True
+
+
 def handle_packet(pkt, local_mode=False, api_url=None, token=None, output_dir=None):
     global _gps_skip_count
     if not pkt.haslayer(Dot11):
         return
     dot11 = pkt.getlayer(Dot11)
-    if getattr(dot11, "type", None) != 0 or getattr(dot11, "subtype", None) != 4:
+    frame_type = getattr(dot11, "type", None)
+    frame_subtype = getattr(dot11, "subtype", None)
+    if frame_type != 0 or frame_subtype not in MGMT_SUBTYPES:
         return
+    subtype_str = MGMT_SUBTYPES[frame_subtype]
     ssid = extract_ssid(pkt)
-    if not ssid:
+    if ssid is None:
         return
+    # Wildcard probe request: SSID element present but zero-length ("give me
+    # everyone"). This is common client behavior — don't drop it, label it.
+    is_wildcard = (ssid == "" and frame_subtype == 4)
+    if is_wildcard:
+        ssid = "<wildcard>"
 
     src = getattr(dot11, "addr2", None)
     dst = getattr(dot11, "addr1", None)
     bssid = getattr(dot11, "addr3", None)
-    rp = pack_values([dst, bssid, ssid, 0, 4, "Management", "Probe Request"])
+
+    # Beacons are the high-volume frame type (~10/sec per AP) — debounce those
+    # only. Probe requests/responses are comparatively rare and each one is
+    # informative (e.g. request/response pairing), so log every occurrence.
+    if frame_subtype == 8:
+        if not _should_record((src, ssid, frame_subtype), time.time()):
+            return
+
+    rp = pack_values([dst, bssid, ssid, frame_type, frame_subtype, "Management", subtype_str])
     freq_mhz, rssi = get_radiotap_freq_and_rssi(pkt)
     channel = freq_to_channel(freq_mhz)
 
@@ -310,12 +353,22 @@ def handle_packet(pkt, local_mode=False, api_url=None, token=None, output_dir=No
                 _gps_skip_count = 0
 
     lat, lon = coords
+    # The randomized-vs-public MAC heuristic only makes sense for client
+    # devices (probe requests). APs (beacons/probe responses) essentially
+    # never randomize their BSSID, so labeling them "random"/"public" would
+    # be misleading — leave it unset for those subtypes.
+    if frame_subtype == 4:
+        address_type = "random" if src and src[1] in ["a", "e", "2", "6"] else "public"
+    else:
+        address_type = None
+
     record = {
         "timestamp": datetime.utcnow().isoformat(),
         "protocol": "WiFi",
+        "frame_subtype": subtype_str,
         "channel": int(channel) if channel is not None else None,
         "mac_address": src,
-        "address_type": "random" if src and src[1] in ["a", "e", "2", "6"] else "public",
+        "address_type": address_type,
         "latitude": lat,
         "longitude": lon,
         "rssi": int(rssi) if rssi is not None else None,
@@ -378,7 +431,9 @@ def channel_hopper(iface, interval=CHANNEL_HOP_INTERVAL):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="WiFi probe request sniffer — uploads to WayFindrs API.")
+    parser = argparse.ArgumentParser(
+        description="WiFi management-frame sniffer (probe requests, probe responses, beacons) — uploads to WayFindrs API."
+    )
     parser.add_argument("-i", "--iface", required=True, help="Wireless interface (e.g. wlan0)")
     parser.add_argument("-c", "--count", type=int, default=0,
                         help="Packets to capture (0 = infinite)")
@@ -434,7 +489,7 @@ def main():
     signal.signal(signal.SIGTERM, shutdown)
 
     threading.Thread(target=channel_hopper, args=(iface,), daemon=True).start()
-    print(f"[+] Listening on {iface} with channel hopping — probe requests only.")
+    print(f"[+] Listening on {iface} with channel hopping — probe requests, probe responses, and beacons.")
 
     try:
         sniff(
