@@ -1,7 +1,7 @@
 # WayFindrs Sensor Scripts
 
 Sensor nodes and management tooling for the **WayFindrs** missing-person search network.
-Each sensor scans for Bluetooth Low Energy (BLE) advertisements and WiFi probe requests,
+Each sensor scans for Bluetooth Low Energy (BLE) advertisements and WiFi signals,
 then uploads packet metadata to the WayFindrs mobile API for analysis.
 
 ---
